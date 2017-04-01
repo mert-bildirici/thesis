@@ -1,17 +1,31 @@
-#finding averages with missing data
-generation_average_with_NAs <- sum(all$`Üretim (MW)`, na.rm = T)/(nrow(all)-sum(is.na(all$`Üretim (MW)`)))
-consumption_average_with_NAs <- sum(all$`Yük (MW)`, na.rm = T)/(nrow(all)-sum(is.na(all$`Yük (MW)`)))
+#without imputing missing data
 
-#comparison
-constant_for_power <- generation_average_with_NAs/consumption_average_with_NAs
-constant_for_energy <- sum(all$`Üretim (MW)`, na.rm = T)/sum(all$`Yük (MW)`, na.rm = T)
+  data_1 <- original_data
 
-#new load assumption with energy constant
-load_assumption <- constant_for_energy * all$`Yük (MW)`
-all <- cbind(all, load_assumption)
+  ##finding averages
+  generation_average_1 <- sum(data_1$`generation-1 (MW)`, na.rm = T) / (nrow(data_1)-sum(is.na(data_1$`generation-1 (MW)`)))
+  load_average_1 <- sum(data_1$`load-1 (MW)`, na.rm = T) / (nrow(data_1)-sum(is.na(data_1$`load-1 (MW)`)))
 
-#power difference after assumption
-difference <- all$`Üretim (MW)`-all$load_assumption
-all <- cbind(all, difference)
+  ##comparison of generation and load
+  power_constant_1 <- generation_average_1 / load_average_1
+  energy_constant_1 <- sum(data_1$`generation-1 (MW)`, na.rm = T) / sum(data_1$`load-1 (MW)`, na.rm = T)
 
-plot(all$difference)
+  ##new load assumption with energy constant
+  load_assumption_1 <- energy_constant_1 * data_1$`load-1 (MW)`
+  data_1 <- cbind(data_1, "new load (MW)" = load_assumption_1)
+
+  ##power difference after assumption
+  difference_1 <- data_1$`generation-1 (MW)` - data_1$`new load (MW)`
+  data_1 <- cbind(data_1, "power difference (MW)" = difference_1)
+
+#with imputing missing data
+
+  library(mice)
+  
+  data_2 <- original_data
+  md.pattern(data_2)
+  
+  ##imputation method?
+  temp_data <- mice(data_2, method = "mean")
+  data_2 <- complete(temp_data)
+  
