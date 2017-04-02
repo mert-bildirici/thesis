@@ -1,4 +1,12 @@
-#without imputing missing data
+library(ggplot2)
+library(mice)
+
+#missing data percentages
+
+missing_data_g <- sum(is.na(data_1$`generation-1 (MW)`)) / nrow(data_1) * 100
+missing_data_l <- sum(is.na(data_1$`load-1 (MW)`)) / nrow(data_1) * 100
+
+#data analysis without imputing missing data
 
   data_1 <- original_data
 
@@ -18,14 +26,39 @@
   difference_1 <- data_1$`generation-1 (MW)` - data_1$`new load (MW)`
   data_1 <- cbind(data_1, "power difference (MW)" = difference_1)
 
-#with imputing missing data
-
-  library(mice)
+  ##plots
+  qplot(c(1:nrow(data_1)), 
+        data_1$`generation-1 (MW)`, 
+        geom = "point",
+        col = I("black"),
+        main = "Generation-1", 
+        xlab = "Data number", 
+        ylab = "Generation (MW)")
   
-  data_2 <- original_data
-  md.pattern(data_2)
+  qplot(data_1$`generation-1 (MW)`, 
+        geom = "histogram",
+        binwidth = 10,
+        col = I("black"),
+        fill = I("black"),
+        alpha = I(.5),
+        main = "Distribution of Generation-1", 
+        xlab = "Generation (MW)", 
+        ylab = "Frequency")
   
-  ##imputation method?
-  temp_data <- mice(data_2, method = "mean")
-  data_2 <- complete(temp_data)
+  qplot(c(1:nrow(data_1)), 
+        data_1$`new load (MW)`, 
+        geom = "point",
+        col = I("black"),
+        main = "Load-1", 
+        xlab = "Data number", 
+        ylab = "Load (MW)")
   
+  qplot(data_1$`new load (MW)`,
+        geom = "histogram",
+        binwidth = 10,
+        col = I("black"),
+        fill = I("black"),
+        alpha = I(.5),
+        main = "Distribution of Load-1", 
+        xlab = "Load (MW)", 
+        ylab = "Frequency")
