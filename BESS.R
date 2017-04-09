@@ -1,159 +1,102 @@
-#BESS model
+library(ggplot2)
 
-#time
+#----
+#data
 
 time <- data_2$time
+P_diff <- data_2$`power difference (MW)`
+data_lenght <- nrow(data_2)
 
-#power difference
+#----
+#Initial values
 
-P.diff <- data_2$`power difference (MW)`
-
-#open loop window lenght as second
+##open loop window lenght (sec)
 
 window_length <- 10*60
 
-#power capacity as MW
+##battery power (MW)
 
-P <- 100
+P_bess.l <- 100
 
-#energy capacity as MWh
+##battery energy (MWh)
 
-C <- 10000
+E_bess.l <- 10000
 
-##Initial energy capacity
+##battery SOC (%)
 
-C.init <- 0.4 * C
+SOC_bess.ul <- 0.3
+SOC_bess.ol <- 0.9
+SOC_bess <- numeric()
+SOC_bess[1] <- 0.3
 
-#SOC limits
+#----
+#BESS model
 
-SOC.ul <- 0.3
-SOC.ol <- 1
+P_bess <- numeric()
 
-###
-
-P.bess <- numeric(length = nrow(data_2))
-
-for(i in 1:nrow(data_2)){
-
-  if(i == 1){
-    
-    SOC <- C.init / C
-    
-    if(P.diff[i] > P){
+for(i in 1:data_lenght){
+  
+  if(((SOC_bess[i] < SOC_bess.ul) && (P_diff[i] < 0)) || ((SOC_bess[i] > SOC_bess.ol) && (P_diff[i] > 0))){
       
-      P.bess[i] <- P
+    P_bess[i] <- 0
+      
+  }
+  
+  else{
+    
+    if(P_diff[i] > P_bess.l){
+      
+      P_bess[i] <- P_bess.l
       
     }
     
-    else if(P.diff[i] < -P){
+    else if(P_diff[i] < -P_bess.l){
       
-      P.bess[i] <- -P
+      P_bess[i] <- -P_bess.l
       
     }
     
     else{
       
-      P.bess[i] <- P.diff[i]
+      P_bess[i] <- P_diff[i]
       
     }
     
   }
   
-  else{
-    
-    SOC <- (C.init + (P.bess[i-1] / (window_length / 3600))) / C    
-    
-    if(SOC < SOC.ul){
-      
-      if(P.diff[i] > 0){
-        
-        if(P.diff[i] > P){
-          
-          P.bess[i] <- P
-          
-        }
-        
-        else{
-          
-          P.bess[i] <- P.diff[i]
-          
-        }
-        
-      }
-      
-      else{
-        
-        P.bess[i] <- 0
-        
-      }
-      
-    }
-    
-    else if(SOC > SOC.ol){
-      
-      if(P.diff[i] < 0){
-        
-        if(P.diff[i] < -P){
-          
-          P.bess[i] <- -P
-          
-        }
-        
-        else{
-          
-          P.bess[i] <- P.diff[i]
-          
-        }
-        
-      }
-      
-      else{
-        
-        P.bess[i] <- 0
-        
-      }
-      
-    }
-    
-    else{
-      
-      if(P.diff[i] > P){
-        
-        P.bess[i] <- P
-        
-      }
-      
-      else if(P.diff[i] < -P){
-        
-        P.bess[i] <- -P
-        
-      }
-      
-      else{
-        
-        P.bess[i] <- P.diff[i]
-      
-      }
-        
-    }
-    
-  }  
-  
+  SOC_bess[i+1] <- SOC_bess[i] + ((P_bess[i] * (window_length / 3600)) / E_bess.l)
+
 }
 
+#----
+#Graphs
+
+##Battery Power Graph
+
 qplot(time,
-      P.bess, 
+      P_bess, 
       geom = "point",
       col = I("black"),
       main = "battery power vs time", 
       xlab = "Date", 
       ylab = "Power (MW)")
 
+##Excess Power Graph
+
 qplot(time,
-      P.diff-P.bess, 
+      P_diff - P_bess, 
       geom = "point",
       col = I("black"),
-      main = "extra power vs time", 
+      main = "excess power vs time", 
       xlab = "Date", 
       ylab = "Power (MW)")
 
+##Battery SOC Graph
+
+qplot(time,
+      SOC_bess[1:data_lenght]*100,
+      geom = "point",
+      col = I("black"),
+      main = "SOC vs time", 
+      xlab = "Date", 
+      ylab = "SOC (%)")
