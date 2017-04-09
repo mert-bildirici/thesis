@@ -3,31 +3,35 @@ library(ggplot2)
 #----
 #data
 
-time <- data_2$time
-P_diff <- data_2$`power difference (MW)`
-data_lenght <- nrow(data_2)
+data.1 <- data_2
+
+time <- data.1[ ,3]
+P_diff <- data.1[ ,5]
+data_lenght <- nrow(data.1)
 
 #----
 #Initial values
 
-##open loop window lenght (sec)
+##open loop window lenght (min)
 
-window_length <- 10*60
+window_length <- 20
+
+a <- window_length / 10
 
 ##battery power (MW)
 
-P_bess.l <- 100
+P_bess.l <- 200
 
 ##battery energy (MWh)
 
-E_bess.l <- 10000
+E_bess.l <- 30000
 
 ##battery SOC (%)
 
 SOC_bess.ul <- 0.3
 SOC_bess.ol <- 0.9
 SOC_bess <- numeric()
-SOC_bess[1] <- 0.3
+SOC_bess[1] <- 0.5
 
 #----
 #BESS model
@@ -36,37 +40,59 @@ P_bess <- numeric()
 
 for(i in 1:data_lenght){
   
-  if(((SOC_bess[i] < SOC_bess.ul) && (P_diff[i] < 0)) || ((SOC_bess[i] > SOC_bess.ol) && (P_diff[i] > 0))){
+  if((i %% a) == 1){
+
+    if(((SOC_bess[i] < SOC_bess.ul) && (P_diff[i] < 0)) || ((SOC_bess[i] > SOC_bess.ol) && (P_diff[i] > 0))){
       
-    P_bess[i] <- 0
-      
-  }
-  
-  else{
-    
-    if(P_diff[i] > P_bess.l){
-      
-      P_bess[i] <- P_bess.l
-      
-    }
-    
-    else if(P_diff[i] < -P_bess.l){
-      
-      P_bess[i] <- -P_bess.l
+      P_bess[i] <- 0
       
     }
     
     else{
       
-      P_bess[i] <- P_diff[i]
+      if(P_diff[i] > P_bess.l){
+        
+        P_bess[i] <- P_bess.l
+        
+      }
+      
+      else if(P_diff[i] < -P_bess.l){
+        
+        P_bess[i] <- -P_bess.l
+        
+      }
+      
+      else{
+        
+        P_bess[i] <- P_diff[i]
+        
+      }
       
     }
     
+    SOC_bess[i+a] <- SOC_bess[i] + ((P_bess[i] * (window_length / 60)) / E_bess.l)
+    
   }
-  
-  SOC_bess[i+1] <- SOC_bess[i] + ((P_bess[i] * (window_length / 3600)) / E_bess.l)
 
 }
+
+for(i in 1:data_lenght){
+  
+  if(is.na(P_bess[i])){
+    
+    P_bess[i] <- P_bess[i-1]
+    
+  }
+  
+  if(is.na(SOC_bess[i])){
+    
+    SOC_bess[i] <- SOC_bess[i-1] + ((P_bess[i-1] / 6) / E_bess.l)
+    
+  }
+
+}
+
+
 
 #----
 #Graphs
@@ -100,3 +126,4 @@ qplot(time,
       main = "SOC vs time", 
       xlab = "Date", 
       ylab = "SOC (%)")
+
