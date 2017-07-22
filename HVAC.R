@@ -99,11 +99,27 @@ for(j in 1:length(setPower)){
 
 resultHVAC1 <- cbind(time=timeFinal, resultHVAC1[order(resultHVAC1$id), ])
 
+powerHVAC1 <- data.frame(time=timeFinal, totalPower=totalPowerHVAC1)
+
+ggplot(powerHVAC1, aes(x=time, y=totalPower)) +
+  geom_line(size=1, color="#56B1F7") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(breaks=seq(0, 2, 0.5))
+
+ggplot(resultHVAC1, aes(x=time, y=tempRoom)) +
+  geom_line(size=0.1, aes(color=id)) +
+  theme(legend.position="none") +
+  labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
 #HVAC load with DSM
 
 capacityLine <- 35
 
-increaseGeneration <- 0.04
+increaseGeneration <- 0.06
 increaseLoad <- 0.02
 
 gridPower <- (dataAll$generation*(1+increaseGeneration))-(dataAll$load*(1+increaseLoad))
@@ -185,7 +201,22 @@ for(j in 1:length(setPower)){
 
 resultHVAC2 <- cbind(time=timeFinal, resultHVAC2[order(resultHVAC2$id), ])
 
-#graphs
+powerHVAC2 <- data.frame(time=timeFinal, totalPower=totalPowerHVAC2)
+
+ggplot(powerHVAC2, aes(x=time, y=totalPower)) +
+  geom_line(size=1, color="#56B1F7") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")+
+  scale_y_continuous(breaks=seq(0, 2, 0.5))
+
+ggplot(resultHVAC2, aes(x=time, y=tempRoom)) +
+  geom_line(size=0.1, aes(color=id)) +
+  theme(legend.position="none") +
+  labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
 
 resultGridPower <- data.frame(time=timeFinal, withoutDSM=(gridPower-totalPowerHVAC1), withDSM=(gridPower-totalPowerHVAC2))
 resultGridPower <- melt(subset(resultGridPower, select=c(time, withoutDSM, withDSM)), id.var="time")
@@ -200,17 +231,3 @@ ggplot(resultGridPower, aes(x=time, y=value)) +
   scale_y_continuous(breaks=seq(-50, 50, 10)) +
   geom_line(aes(y=capacityLine), size=1, color="red4") +
   geom_line(aes(y=-capacityLine), size=1, color="red4")
-
-ggplot(resultHVAC1, aes(x=time, y=tempRoom)) +
-  geom_line(size=0.1, aes(color=id)) +
-  theme(legend.position="none") +
-  labs(x="time (month)", y="room temperature (C)") +
-  theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
-
-ggplot(resultHVAC2, aes(x=time, y=tempRoom)) +
-  geom_line(size=0.1, aes(color=id)) +
-  theme(legend.position="none") +
-  labs(x="time (month)", y="room temperature (C)") +
-  theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
