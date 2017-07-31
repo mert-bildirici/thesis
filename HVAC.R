@@ -20,34 +20,40 @@ tempWindow <- 2
 
 tempRoomMin <- tempRoomWanted-(tempWindow/2)
 tempRoomMax <- tempRoomWanted+(tempWindow/2)
-tempRoomInitial <- tempRoomWanted
 
 #HVAC load without DSM
 
-tempOutSum <- 0
-tempOutAverage <- 0
-
 modeHVAC <- logical(0)
 
-for(i in 1:length(setPower)){
+for(i in 1:length(tempDaily$temp4)){
   
-  tempOutSum <- tempOutSum+tempOut[i]
+  if(i <= 7){
+    
+    modeHVAC[i] <- 1 
+  }
   
-  if(i%%144 == 0){
+  else{
+    
+    tempWindow <- 0
+    
+    k <- 6
+    
+    for(j in (i-7):(i-1)){
+      
+      tempWindow <- tempWindow + (tempDaily$temp4[j]*0.8*((1-0.8)^k))
+      
+      k <- k-1
+    }
+    
+    if(tempWindow < tempRoomWanted){
+      
+      modeHVAC[i] <- 1
+    }
+    
+    else{
 
-    tempOutAverage <- tempOutSum/144
-    
-    if(tempOutAverage >= tempRoomWanted){
-      
-      modeHVAC[i/144] <- 0
+      modeHVAC[i] <- 0
     }
-    
-    else if(tempOutAverage < tempRoomWanted){
-      
-      modeHVAC[i/144] <- 1 
-    }
-    
-    tempOutSum <- 0
   }
 }
 
@@ -61,12 +67,6 @@ resultHVAC1 <- data.frame(step=integer(0), id=integer(0), tempRoom=numeric(0), u
 totalPowerHVAC1 <- numeric(length=length(setPower))
 
 for(i in 1:length(setPower)){
-  
-  if(i%%144 ==0){
-    
-    tableHVAC1[1,3] <- 0
-    tableHVAC1[1,4] <- 0
-  }
 
   if(modeHVAC[i] == 0){
     
@@ -133,6 +133,12 @@ for(i in 1:length(setPower)){
   totalPowerHVAC1[i] <- ((tableHVAC1[1,3]+tableHVAC1[1,4])*numberHVAC*powerHVAC)/1000
   
   resultHVAC1 <- rbind(resultHVAC1, data.frame(step=i, id=tableHVAC1[1,1], RoomTemperature=tableHVAC1[1,2], CoolingMode=tableHVAC1[1,3], HeatingMode=tableHVAC1[1,4]))  
+  
+  if(i%%144 ==0){
+    
+    tableHVAC1[1,3] <- 0
+    tableHVAC1[1,4] <- 0
+  }
 }
 
 powerHVAC1 <- data.frame(time=timeFinal, totalPower=totalPowerHVAC1)
@@ -144,7 +150,7 @@ ggplot(powerHVAC1, aes(x=time, y=totalPower)) +
   geom_line(size=1, color="#56B1F7") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_x_datetime(date_labels="%d.%m", date_breaks="1 month") +
   scale_y_continuous(breaks=seq(0, 2, 0.5))
 
 ggplot(resultHVAC1, aes(x=time, y=RoomTemperature)) +
@@ -153,7 +159,7 @@ ggplot(resultHVAC1, aes(x=time, y=RoomTemperature)) +
   theme(legend.position="none") +
   labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+  scale_x_datetime(date_labels="%d.%m", date_breaks="1 month")
 
 ggplot(resultHVAC1, aes(x=time, y=CoolingMode)) +
   theme_bw() +
@@ -161,7 +167,7 @@ ggplot(resultHVAC1, aes(x=time, y=CoolingMode)) +
   theme(legend.position="none") +
   labs(x="time (month)", y="cooling mode") +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+  scale_x_datetime(date_labels="%d.%m", date_breaks="1 month")
 
 ggplot(resultHVAC1, aes(x=time, y=HeatingMode)) +
   theme_bw() +
@@ -169,7 +175,7 @@ ggplot(resultHVAC1, aes(x=time, y=HeatingMode)) +
   theme(legend.position="none") +
   labs(x="time (month)", y="heating mode") +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+  scale_x_datetime(date_labels="%d.%m", date_breaks="1 month")
 
 #HVAC load with DSM
 
