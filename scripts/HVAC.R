@@ -1,12 +1,13 @@
 library(ggplot2)
+library(reshape2)
 
 timeFinal <- timeSubhourly[seq(1,105408,2)]
 
 #----
 #HVAC inputs
 
-numberHVAC <- 1000
-controlNumberHVAC <- 50
+numberHVAC <- 2500
+controlNumberHVAC <- 250
 
 powerHVAC <- 2
 
@@ -58,7 +59,7 @@ modeHVAC <- c(rep(1,42), modeHVAC, rep(1,30))
 #----
 #HVAC load without DSM
 
-tableHVAC1 <- data.frame(id=1, RoomTemperature=tempRoomWanted, CoolingMode=logical(length=1), HeatingMode=logical(1))
+tableHVAC1 <- data.frame(id=1, roomTemperature=tempRoomWanted, coolingMode=logical(length=1), heatingMode=logical(1))
 
 resultHVAC1 <- data.frame(integer(0), integer(0), numeric(0), logical(0), logical(0))
 
@@ -139,24 +140,14 @@ for(i in 1:length(setPower)){
   
   totalPowerHVAC1[i] <- ((tableHVAC1[1,3]+tableHVAC1[1,4])*numberHVAC*powerHVAC)/1000
   
-  resultHVAC1 <- rbind(resultHVAC1, data.frame(step=i, id=tableHVAC1[1,1], RoomTemperature=tableHVAC1[1,2], CoolingMode=tableHVAC1[1,3], HeatingMode=tableHVAC1[1,4]))  
+  resultHVAC1 <- rbind(resultHVAC1, data.frame(step=i, id=tableHVAC1[1,1], roomTemperature=tableHVAC1[1,2], coolingMode=tableHVAC1[1,3], heatingMode=tableHVAC1[1,4]))  
 }
 
 powerHVAC1 <- data.frame(time=timeFinal, totalPower=totalPowerHVAC1)
 
 resultHVAC1 <- cbind(time=timeFinal, resultHVAC1[order(resultHVAC1$id), ], row.names=NULL)
 
-modeHVAC <- data.frame(time=timeFinal, mode=modeHVAC)
-
-ggplot(modeHVAC, aes(x=time, y=mode)) +
-  theme_bw() +
-  geom_line(size=0.1, aes(color="red")) +
-  theme(legend.position="none") +
-  labs(x="time (month)", y="HVAC operation mode") +
-  theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%d.%m", date_breaks="1 month")
-
-ggplot(resultHVAC1, aes(x=time, y=RoomTemperature)) +
+ggplot(resultHVAC1, aes(x=time, y=roomTemperature)) +
   theme_bw() +
   geom_line(size=0.1, aes(color="red")) +
   theme(legend.position="none") +
@@ -165,7 +156,7 @@ ggplot(resultHVAC1, aes(x=time, y=RoomTemperature)) +
   scale_x_datetime(date_labels="%d.%m", date_breaks="1 month") +
   scale_y_continuous(limits=c((tempRoomMin-1), (tempRoomMax+1)), breaks=seq((tempRoomMin-1), (tempRoomMax+1), 1))
   
-ggplot(resultHVAC1, aes(x=time, y=CoolingMode)) +
+ggplot(resultHVAC1, aes(x=time, y=coolingMode)) +
   theme_bw() +
   geom_line(size=0.1, aes(color="#56B1F7")) +
   theme(legend.position="none") +
@@ -173,7 +164,7 @@ ggplot(resultHVAC1, aes(x=time, y=CoolingMode)) +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%d.%m", date_breaks="1 month")
 
-ggplot(resultHVAC1, aes(x=time, y=HeatingMode)) +
+ggplot(resultHVAC1, aes(x=time, y=heatingMode)) +
   theme_bw() +
   geom_line(size=0.1, aes(color="#56B1F7")) +
   theme(legend.position="none") +
@@ -191,18 +182,39 @@ ggplot(powerHVAC1, aes(x=time, y=totalPower)) +
 
 #HVAC load with DSM
 
-capacityLine <- 35
+generationDSM <- dataAll2$generation
+loadDSM <- dataAll2$loadWithRatio
 
-increaseGeneration <- 0.1
-increaseLoad <- 0.02
+increaseGeneration <- 0.2
+increaseLoad <- 0
 
-gridPower <- (dataAll$generation*(1+increaseGeneration))-(dataAll$load*(1+increaseLoad))
+gridPower <- (generationDSM*(1+increaseGeneration))-(loadDSM*(1+increaseLoad))
 
-setPower <- gridPower-capacityLine
+lineCapacity <- 39.6
 
-tableHVAC2 <- data.frame(id=1:(numberHVAC/controlNumberHVAC), tempRoom=tempRoomWanted, uCl=logical(length=(numberHVAC/controlNumberHVAC)),uHt=logical(length=(numberHVAC/controlNumberHVAC)))
+for(i in 1:length(gridPower)){
+  
+  if((gridPower[i] <= lineCapacity) && (gridPower[i] >= -lineCapacity)){
+   
+    setPower[i] <- 0 
+  }
+  
+  else if(gridPower[i] > lineCapacity){
+    
+    setPower[i] <- gridPower[i]-lineCapacity
+  }
+  
+  else if(gridPower[i] < -lineCapacity){
+    
+    setPower[i] <- gridPower[i]+lineCapacity
+  }
+}
 
-resultHVAC2 <- data.frame(step=integer(0), id=integer(0), tempRoom=numeric(0), uCl=logical(0), uHt=logical(0))
+plot(setPower, type="l")
+
+tableHVAC2 <- data.frame(id=1:(numberHVAC/controlNumberHVAC), roomTemperature=tempRoomWanted, coolingMode=logical(length=(numberHVAC/controlNumberHVAC)), heatingMode=logical(length=(numberHVAC/controlNumberHVAC)))
+
+resultHVAC2 <- data.frame(integer(0), integer(0), numeric(0), logical(0), logical(0))
 
 totalPowerHVAC2 <- numeric(length=length(setPower))
 
@@ -212,64 +224,53 @@ for(j in 1:length(setPower)){
   
   for(i in 1:(numberHVAC/controlNumberHVAC)){
     
-    if(tableHVAC2[i,2] < tempRoomMin){
+    tableHVAC2[i,3] <- 0
+    tableHVAC2[i,4] <- 0
+    
+    if(tableHVAC2[i,2] > tempRoomMax){
       
-      tableHVAC2[i,3] <- 1
-      tableHVAC2[i,4] <- 0
+      if(modeHVAC[j] == 0){
+        
+        tableHVAC2[i,3] <- 1
+      }
     }
     
-    else if(tableHVAC2[i,2] > tempRoomMax){
+    else if(tableHVAC2[i,2] < tempRoomMin){
       
-      tableHVAC2[i,3] <- 0
-      tableHVAC2[i,4] <- 1
-    }
-    
-    else{
-      
-      tableHVAC2[i,3] <- 0
-      tableHVAC2[i,4] <- 0
-    }
-  }
-  
-  tableHVAC2 <- tableHVAC2[order(-tableHVAC2$uHeating, -tableHVAC2$uCooling), ]
-  
-  for(i in 1:(numberHVAC/controlNumberHVAC)){
-    
-    if((tableHVAC2[i,3]+tableHVAC2[i,4]) == 1){
-      
-      setPowerRemain <- setPowerRemain-((powerHVAC*controlNumberHVAC)/1000)
+      if(modeHVAC[j] == 1){
+        
+        tableHVAC2[i,4] <- 1
+      }
     }
     
     else{
       
       if(setPowerRemain > 0){
         
-        if(tableHVAC2[i,2] < tempRoomWanted){
+        if(modeHVAC[j] == 0){
           
           tableHVAC2[i,3] <- 1
-          tableHVAC2[i,4] <- 0
         }
         
-        else{
+        else if(modeHVAC[j] == 1){
           
-          tableHVAC2[i,3] <- 0
           tableHVAC2[i,4] <- 1
         }
-        
-        setPowerRemain <- setPowerRemain-((powerHVAC*controlNumberHVAC)/1000)
       }
     }
     
-    tableHVAC2[i,2] <- tableHVAC2[i,2]+((((tempOut[j]-tableHVAC2[i,2])/thermRes)+((tableHVAC2[i,3]*heatingCoP-tableHVAC2[i,4]*coolingCoP)*powerHVAC))*(600/thermCap))
+    setPowerRemain <- setPowerRemain-((tableHVAC2[i,3]+tableHVAC2[i,4])*((powerHVAC*controlNumberHVAC)/1000))
+    
+    tableHVAC2[i,2] <- tableHVAC2[i,2]+((((tempOut[j]-tableHVAC2[i,2])/thermRes)+((tableHVAC2[i,4]*heatingCoP-tableHVAC2[i,3]*coolingCoP)*powerHVAC))*(600/thermCap))
   }
-
+  
   totalPowerHVAC2[j] <-  setPower[j]-setPowerRemain
   
-  resultHVAC2 <- rbind(resultHVAC2, data.frame(step=j, id=tableHVAC2[ ,1], tempRoom=tableHVAC2[ ,2]))
+  resultHVAC2 <- rbind(resultHVAC2, data.frame(step=j, id=tableHVAC2[ ,1], roomTemperature=tableHVAC2[ ,2]))
   
-  if(j %% 1008 ==0){
+  if(j %% 144 ==0){
     
-    print(j/1008)
+    print(j/144)
   }
 }
 
@@ -281,18 +282,18 @@ ggplot(powerHVAC2, aes(x=time, y=totalPower)) +
   geom_line(size=1, color="#56B1F7") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")+
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") #+
   scale_y_continuous(breaks=seq(0, 2, 0.5))
 
-ggplot(resultHVAC2, aes(x=time, y=tempRoom)) +
+ggplot(resultHVAC2, aes(x=time, y=roomTemperature)) +
   geom_line(size=0.1, aes(color=id)) +
   theme(legend.position="none") +
   labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month")
 
-
 resultGridPower <- data.frame(time=timeFinal, withoutDSM=(gridPower-totalPowerHVAC1), withDSM=(gridPower-totalPowerHVAC2))
+
 resultGridPower <- melt(subset(resultGridPower, select=c(time, withoutDSM, withDSM)), id.var="time")
 
 ggplot(resultGridPower, aes(x=time, y=value)) +
@@ -303,5 +304,5 @@ ggplot(resultGridPower, aes(x=time, y=value)) +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
   scale_y_continuous(breaks=seq(-50, 50, 10)) +
-  geom_line(aes(y=capacityLine), size=1, color="red4") +
-  geom_line(aes(y=-capacityLine), size=1, color="red4")
+  geom_line(aes(y=lineCapacity), size=1, color="red4") +
+  geom_line(aes(y=-lineCapacity), size=1, color="red4")
