@@ -45,3 +45,7 @@ powerBESS <- 1
 energy2powerRatio <- 2
   
 energyBESS <- powerBESS*energy2powerRatio
+
+dschEff <- 0.98
+
+chEff <- 0.98

@@ -8,14 +8,14 @@ setPowerBESS <- numeric(length(gridPower))
 
 for(i in 1:length(gridPower)){
   
-  if((gridPower[i] <= (lineCapacity*(1-lineSafetyMargin))) && (grid[i] >= -(lineCapacity*(1-lineSafetyMargin)))){
+  if((generationData$activePower[i] >= (lineCapacity*(1-lineSafetyMargin)))){
     
-    setPowerBESS[i] <- 0 
+    setPowerBESS[i] <- -(generationData$activePower[i]-(lineCapacity*(1-lineSafetyMargin)))
   }
   
   else{
     
-    setPowerBESS[i] <- -(gridPower[i]-(lineCapacity*(1-lineSafetyMargin)))
+    setPowerBESS[i] <- powerBESS
   }
 }
 
@@ -39,6 +39,10 @@ for(i in 1:length(setPowerBESS)){
       
       outputBESS[i] <- setPowerBESS[i]
     }
+    
+    outputBESS[i] <- outputBESS[i]*dschEf
+    
+    SoC[i+1] <- SoC[i]-((outputBESS[i]/6)/(energyBESS))
   }
   
   else{
@@ -54,8 +58,7 @@ for(i in 1:length(setPowerBESS)){
       
       outputBESS[i] <- setPowerBESS[i]
     }
+    
+    SoC[i+1] <- SoC[i]-(((outputBESS[i]*chEff)/6)/(energyBESS))
   }
-  
-  SoC[i+1] <- SoC[i]-((outputBESS[i]/6)/(energyBESS))
 }
-
