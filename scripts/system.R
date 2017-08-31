@@ -12,8 +12,6 @@ for(i in 1:length(grid)){
     tableHVAC <- data.frame(group=1:groupHVAC, tempRoom=tempRoomWanted, modeCooling=logical(groupHVAC), modeHeating=logical(groupHVAC))
     
     tempRoom <- as.data.frame(matrix(nrow=length(grid), ncol=groupHVAC))
-
-    resultHVAC <- data.frame()
     
     setPowerHVAC <- numeric(length(grid))
     
@@ -24,8 +22,6 @@ for(i in 1:length(grid)){
     tableBESS <- data.frame(SOC=maxSOC, modeDischarging=logical(1), modeCharging=logical(1))
     
     SOC <- numeric(length(grid))
-
-    resultBESS <- data.frame()
     
     setPowerBESS <- numeric(length(grid))
     
@@ -37,9 +33,9 @@ for(i in 1:length(grid)){
   
   #Setting power
   
-  if(grid[i] > (lineCapacity*(1-lineSafetyMargin))){
+  if(grid[i] > 0){
     
-    setPowerHVAC[i] <- grid[i]-(lineCapacity*(1-lineSafetyMargin))
+    setPowerHVAC[i] <- grid[i]
   }
   
   else{
@@ -136,7 +132,15 @@ for(i in 1:length(grid)){
   
   #Setting power
   
-  setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]-outputPowerHVAC[i])
+  if((grid[i]+(numberHVAC*powerHVAC/1000)-outputPowerHVAC[i]) < -(lineCapacity*(1-lineSafetyMargin))){
+    
+    setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]+(numberHVAC*powerHVAC/1000)-outputPowerHVAC[i])
+  }
+  
+  else{
+    
+    setPowerBESS[i] <- -powerBESS
+  }
   
   #Operation
   
@@ -210,10 +214,35 @@ for(i in 1:length(grid)){
   
   if(i == length(grid)){
     
-    resultHVAC <- cbind(timeFinal, tempRoom, outputPowerHVAC)
+    resultHVAC <- data.frame(timeFinal, tempRoom, outputPowerHVAC)
     colnames(resultHVAC) <- c("time", 1:groupHVAC, "output")
     
-    resultBESS <- cbind(timeFinal, SOC, outputPowerBESS)
+    resultBESS <- data.frame(timeFinal, SOC, outputPowerBESS)
     colnames(resultBESS) <- c("time", "SOC", "output")
   }
 }
+
+resultGrid <- data.frame(timeFinal, grid, grid+(numberHVAC*powerHVAC/1000)-outputPowerHVAC+outputPowerBESS)
+colnames(resultGrid) <- c("time", "before", "after")
+
+#graphs
+
+ggplot(resultGrid, aes(x=time, y=before)) +
+  theme_bw() +
+  geom_line(size=1, color="#56B1F7") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(breaks=seq(-200, 200, 20)) +
+  geom_line(aes(y=lineCapacity), size=1, color="red4") +
+  geom_line(aes(y=-lineCapacity), size=1, color="red4")
+
+ggplot(resultGrid, aes(x=time, y=after)) +
+  theme_bw() +
+  geom_line(size=1, color="#56B1F7") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(breaks=seq(-200, 200, 20)) +
+  geom_line(aes(y=lineCapacity), size=1, color="red4") +
+  geom_line(aes(y=-lineCapacity), size=1, color="red4")
