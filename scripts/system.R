@@ -45,87 +45,76 @@ for(i in 1:length(grid)){
   
   #Operation
   
+  if(modeHVAC[i] == 0){
+    
+    tableHVAC <- tableHVAC[order(-tableHVAC[ ,2]), ]
+  }
+  
+  else if(modeHVAC[i] == 1){
+    
+    tableHVAC <- tableHVAC[order(tableHVAC[ ,2]), ]
+  }
+  
   for(j in 1:groupHVAC){
     
-    if(tableHVAC[j,2] > tempRoomMax){
+    if(modeHVAC[i] == 0){
       
-      if(modeHVAC[i] == 0){
+      if(tableHVAC[j,2] > tempRoomMax){
         
         tableHVAC[j,3] <- 1
         tableHVAC[j,4] <- 0
       }
       
-      else{
+      else if(tableHVAC[j,2] < tempRoomMin){
         
         tableHVAC[j,3] <- 0
         tableHVAC[j,4] <- 0
       }
+      
+      else{
+        
+        if(setPowerHVAC[i] > 0){
+          
+          tableHVAC[j,3] <- 1
+          tableHVAC[j,4] <- 0
+        }
+      }
     }
     
-    else if(tableHVAC[j,2] < tempRoomMin){
+    else if(modeHVAC[i] == 1){
       
-      if(modeHVAC[i] == 1){
+      if(tableHVAC[j,2] < tempRoomMin){
         
         tableHVAC[j,3] <- 0
         tableHVAC[j,4] <- 1
       }
       
-      else{
+      else if(tableHVAC[j,2] > tempRoomMax){
         
         tableHVAC[j,3] <- 0
         tableHVAC[j,4] <- 0
       }
-    }
-    
-    else{
       
-      tableHVAC[j,3] <- 0
-      tableHVAC[j,4] <- 0
-    }
-  }
-  
-  tableHVAC <- tableHVAC[order(-tableHVAC[ ,3],-tableHVAC[ ,4]), ]
-  
-  for(j in 1:groupHVAC){
-    
-    if(setPowerHVAC[i] > 0){
-      
-      if(tableHVAC[j,3]+tableHVAC[j,4] == 0){
+      else{
         
-        if(tableHVAC[j,2] > (tempRoomMin+0.5)){
+        if(setPowerHVAC[i] > 0){
           
-          if(modeHVAC[i] == 0){
-            
-            tableHVAC[j,3] <- 1
-            tableHVAC[j,4] <- 0
-          }
-        }
-        
-        else if(tableHVAC[j,2] < (tempRoomMax-0.5)){
-          
-          if(modeHVAC[i] == 1){
-            
-            tableHVAC[j,3] <- 0
-            tableHVAC[j,4] <- 1
-          }
+          tableHVAC[j,3] <- 0
+          tableHVAC[j,4] <- 1
         }
       }
     }
     
+    tableHVAC[j,2] <- tableHVAC[j,2]+((((tempOut[i]-tableHVAC[j,2])/thermRes)+((tableHVAC[j,4]*heatingCoP-tableHVAC[j,3]*coolingCoP)*powerHVAC))*(600/thermCap))
+   
     setPowerHVAC[i] <- setPowerHVAC[i]-((tableHVAC[j,3]+tableHVAC[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
+    
     outputPowerHVAC[i] <- outputPowerHVAC[i]+((tableHVAC[j,3]+tableHVAC[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
   }
   
   tableHVAC <- tableHVAC[order(tableHVAC[ ,1]), ]
   
   tempRoom[i, ] <- as.numeric(tableHVAC[ ,2])
-  
-  for(j in 1:groupHVAC){
-    
-    tableHVAC[j,2] <- tableHVAC[j,2]+((((tempOut[i]-tableHVAC[j,2])/thermRes)+((tableHVAC[j,4]*heatingCoP-tableHVAC[j,3]*coolingCoP)*powerHVAC))*(600/thermCap))
-  }
-  
-  tableHVAC <- tableHVAC[order(-tableHVAC[ ,3],-tableHVAC[ ,4]), ]
   
   #----
   #BESS
@@ -226,6 +215,8 @@ resultGrid <- data.frame(timeFinal, grid, grid+(numberHVAC*powerHVAC/1000)-outpu
 colnames(resultGrid) <- c("time", "before", "after")
 
 #graphs
+
+library(ggplot2)
 
 ggplot(resultGrid, aes(x=time, y=before)) +
   theme_bw() +
