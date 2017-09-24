@@ -31,19 +31,119 @@ modeHVAC <- c(rep(1,42), modeHVAC, rep(1,30))
 #----
 
 for(i in 1:length(grid)){
+  
+  if(i == 1){
+    
+    tableHVAC1 <- data.frame(group=1, tempRoom=tempRoomWanted, modeCooling=logical(1), modeHeating=logical(1))    
+    
+    tempRoom1 <- as.data.frame(matrix(nrow=length(grid), ncol=1))
+    
+    outputPowerHVAC1 <- numeric(length(grid))
+  }
+  
+  else{
+    
+    if(modeHVAC[i] != modeHVAC[i-1]){
+      
+      tableHVAC1[1,3] <- 0
+      tableHVAC1[1,4] <- 0
+    }
+    
+    else{
+      
+      if(modeHVAC[i] == 0){
+        
+        if(tableHVAC1[1,2] > tempRoomMax){
+          
+          tableHVAC1[1,3] <- 1
+          tableHVAC1[1,4] <- 0
+        }
+        
+        else if(tableHVAC1[1,2] < tempRoomMin+((coolingCoP*powerHVAC)*(600/thermCap))){
+          
+          tableHVAC1[1,3] <- 0
+          tableHVAC1[1,4] <- 0     
+        }
+        
+        else{
+          
+          if(tableHVAC1[1,3] == 1){
+            
+            tableHVAC1[1,3] <- 1
+            tableHVAC1[1,4] <- 0
+          }
+          
+          else{
+            
+            tableHVAC1[1,3] <- 0
+            tableHVAC1[1,4] <- 0
+          }
+        }
+      }
+      
+      else{
+        
+        if(tableHVAC1[1,2] > tempRoomMax-((heatingCoP*powerHVAC)*(600/thermCap))){
+          
+          tableHVAC1[1,3] <- 0
+          tableHVAC1[1,4] <- 0
+        }
+        
+        else if(tableHVAC1[1,2] < tempRoomMin){
+          
+          tableHVAC1[1,3] <- 0
+          tableHVAC1[1,4] <- 1     
+        }
+        
+        else{
+          
+          if(tableHVAC1[1,4] == 1){
+            
+            tableHVAC1[1,3] <- 0
+            tableHVAC1[1,4] <- 1
+          }
+          
+          else{
+            
+            tableHVAC1[1,3] <- 0
+            tableHVAC1[1,4] <- 0
+          }
+        }
+      }
+    }
+  }
+  
+  tempRoom1[i,1] <- tableHVAC1[1,2]
+  
+  tableHVAC1[1,2] <- tableHVAC1[1,2]+((((tempOut[i]-tableHVAC1[1,2])/thermRes)+((tableHVAC1[1,4]*heatingCoP-tableHVAC1[1,3]*coolingCoP)*powerHVAC))*(600/thermCap)) 
+  
+  outputPowerHVAC1[i] <- ((tableHVAC1[1,3]+tableHVAC1[1,4])*numberHVAC*powerHVAC)/1000
+  
+  #day count
+  
+  if(i%%144 == 0){
+    
+    print(i/144)
+  }
+}
+
+
+#----
+
+for(i in 1:length(grid)){
 
   #----
   #initialization
   
   if(i == 1){
     
-    tableHVAC <- data.frame(group=1:groupHVAC, tempRoom=tempRoomWanted, modeCooling=logical(groupHVAC), modeHeating=logical(groupHVAC))
+    tableHVAC2 <- data.frame(group=1:groupHVAC, tempRoom=tempRoomWanted, modeCooling=logical(groupHVAC), modeHeating=logical(groupHVAC))
     
-    tempRoom <- as.data.frame(matrix(nrow=length(grid), ncol=groupHVAC))
+    tempRoom2 <- as.data.frame(matrix(nrow=length(grid), ncol=groupHVAC))
     
     setPowerHVAC <- numeric(length(grid))
     
-    outputPowerHVAC <- numeric(length(grid))
+    outputPowerHVAC2 <- numeric(length(grid))
     
     
     tableBESS <- data.frame(SOC=maxSOC, modeDischarging=logical(1), modeCharging=logical(1))
@@ -58,9 +158,9 @@ for(i in 1:length(grid)){
   #----
   #HVAC
   
-  if(grid[i]+((numberHVAC*powerHVAC)/1000) > 0){
+  if((grid[i]+outputPowerHVAC1[i]) > (lineCapacity*(1-lineSafetyMargin))){
     
-    setPowerHVAC[i] <- grid[i]+((numberHVAC*powerHVAC)/1000)
+    setPowerHVAC[i] <- (grid[i]+outputPowerHVAC1[i])-(lineCapacity*(1-lineSafetyMargin))
   }
   
   else{
@@ -69,160 +169,168 @@ for(i in 1:length(grid)){
   }
   
   
+  tempRoom2[i, ] <- as.numeric(tableHVAC2[ ,2])
+  
   if(modeHVAC[i] == 0){
     
-    tableHVAC <- tableHVAC[order(-tableHVAC[ ,2]), ]
+    tableHVAC2 <- tableHVAC2[order(-tableHVAC2[ ,2]), ]
   }
   
   else if(modeHVAC[i] == 1){
     
-    tableHVAC <- tableHVAC[order(tableHVAC[ ,2]), ]
+    tableHVAC2 <- tableHVAC2[order(tableHVAC2[ ,2]), ]
   }
   
   for(j in 1:groupHVAC){
     
     if(modeHVAC[i] == 0){
       
-      if(tableHVAC[j,2] > tempRoomMax){
+      if(tableHVAC2[j,2] > tempRoomMax){
         
-        tableHVAC[j,3] <- 1
-        tableHVAC[j,4] <- 0
+        tableHVAC2[j,3] <- 1
+        tableHVAC2[j,4] <- 0
       }
       
-      else if(tableHVAC[j,2] < tempRoomMin+((coolingCoP*powerHVAC)*(600/thermCap))){
+      else if(tableHVAC2[j,2] < tempRoomMin+((coolingCoP*powerHVAC)*(600/thermCap))){
         
-        tableHVAC[j,3] <- 0
-        tableHVAC[j,4] <- 0
+        tableHVAC2[j,3] <- 0
+        tableHVAC2[j,4] <- 0
       }
       
       else{
         
         if(setPowerHVAC[i] > 0){
           
-          tableHVAC[j,3] <- 1
-          tableHVAC[j,4] <- 0
+          tableHVAC2[j,3] <- 1
+          tableHVAC2[j,4] <- 0
         }
         
         else{
           
-          tableHVAC[j,3] <- 0
-          tableHVAC[j,4] <- 0
+          tableHVAC2[j,3] <- 0
+          tableHVAC2[j,4] <- 0
         }
       }
     }
     
     else if(modeHVAC[i] == 1){
       
-      if(tableHVAC[j,2] < tempRoomMin){
+      if(tableHVAC2[j,2] < tempRoomMin){
         
-        tableHVAC[j,3] <- 0
-        tableHVAC[j,4] <- 1
+        tableHVAC2[j,3] <- 0
+        tableHVAC2[j,4] <- 1
       }
       
-      else if(tableHVAC[j,2] > tempRoomMax-((heatingCoP*powerHVAC)*(600/thermCap))){
+      else if(tableHVAC2[j,2] > tempRoomMax-((heatingCoP*powerHVAC)*(600/thermCap))){
         
-        tableHVAC[j,3] <- 0
-        tableHVAC[j,4] <- 0
+        tableHVAC2[j,3] <- 0
+        tableHVAC2[j,4] <- 0
       }
       
       else{
         
         if(setPowerHVAC[i] > 0){
           
-          tableHVAC[j,3] <- 0
-          tableHVAC[j,4] <- 1
+          tableHVAC2[j,3] <- 0
+          tableHVAC2[j,4] <- 1
         }
         
         else{
           
-          tableHVAC[j,3] <- 0
-          tableHVAC[j,4] <- 0
+          tableHVAC2[j,3] <- 0
+          tableHVAC2[j,4] <- 0
         }
       }
     }
     
-    tableHVAC[j,2] <- tableHVAC[j,2]+((((tempOut[i]-tableHVAC[j,2])/thermRes)+((tableHVAC[j,4]*heatingCoP-tableHVAC[j,3]*coolingCoP)*powerHVAC))*(600/thermCap))
+    tableHVAC2[j,2] <- tableHVAC2[j,2]+((((tempOut[i]-tableHVAC2[j,2])/thermRes)+((tableHVAC2[j,4]*heatingCoP-tableHVAC2[j,3]*coolingCoP)*powerHVAC))*(600/thermCap))
    
-    setPowerHVAC[i] <- setPowerHVAC[i]-((tableHVAC[j,3]+tableHVAC[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
+    setPowerHVAC[i] <- setPowerHVAC[i]-((tableHVAC2[j,3]+tableHVAC2[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
     
-    outputPowerHVAC[i] <- outputPowerHVAC[i]+((tableHVAC[j,3]+tableHVAC[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
+    outputPowerHVAC2[i] <- outputPowerHVAC2[i]+((tableHVAC2[j,3]+tableHVAC2[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
   }
   
-  tableHVAC <- tableHVAC[order(tableHVAC[ ,1]), ]
-  
-  tempRoom[i, ] <- as.numeric(tableHVAC[ ,2])
+  tableHVAC2 <- tableHVAC2[order(tableHVAC2[ ,1]), ]
   
   #----
   #BESS
   
-  # if((grid[i]+(numberHVAC*powerHVAC/1000)-outputPowerHVAC[i]) < -(lineCapacity*(1-lineSafetyMargin))){
-  #   
-  #   setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]+(numberHVAC*powerHVAC/1000)-outputPowerHVAC[i])
-  # }
-  # 
-  # else{
-  #   
-  #   setPowerBESS[i] <- -powerBESS
-  # }
-  # 
-  # 
-  # if(setPowerBESS[i] >= 0){
-  #   
-  #   tableBESS[1,2] <- 1
-  #   tableBESS[1,3] <- 0
-  #   
-  #   if(tableBESS[1,1] > minSOC){
-  #     
-  #     outputPowerBESS[i] <- ((tableBESS[1,1]-minSOC)*energyBESS)*6
-  #     
-  #     if(outputPowerBESS[i] > powerBESS){
-  #       
-  #       outputPowerBESS[i] <- powerBESS
-  #     }
-  #     
-  #     if(outputPowerBESS[i] > setPowerBESS[i]){
-  #       
-  #       outputPowerBESS[i] <- setPowerBESS[i]
-  #     }
-  #     
-  #     outputPowerBESS[i] <- outputPowerBESS[i]*dschEff
-  #   }
-  #   
-  #   else{
-  #     
-  #     outputPowerBESS[i] <- 0
-  #   }
-  # }
-  # 
-  # else{
-  #   
-  #   tableBESS[1,2] <- 0
-  #   tableBESS[1,3] <- 1
-  #   
-  #   if(tableBESS[1,1] < maxSOC){
-  #     
-  #     outputPowerBESS[i] <- ((tableBESS[1,1]-maxSOC)*energyBESS)*6
-  #     
-  #     if(outputPowerBESS[i] < -powerBESS){
-  #       
-  #       outputPowerBESS[i] <- -powerBESS
-  #     }
-  #     
-  #     if(outputPowerBESS[i] < setPowerBESS[i]){
-  #       
-  #       outputPowerBESS[i] <- setPowerBESS[i]
-  #     }
-  #   }
-  #   
-  #   else{
-  #     
-  #     outputPowerBESS[i] <- 0
-  #   }
-  # }
-  # 
-  # SOC[i] <- tableBESS[1,1]
-  # 
-  # tableBESS[1,1] <- tableBESS[1,1]-((((tableBESS[1,2]/dschEff)+(tableBESS[1,3]*chEff))*(outputPowerBESS[i]/6))/energyBESS)
+  if((grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i]) > (lineCapacity*(1-lineSafetyMargin))){
+
+    setPowerBESS[i] <- -((grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i])-(lineCapacity*(1-lineSafetyMargin)))
+  }
+
+  else{
+    
+    if((lineCapacity*(1-lineSafetyMargin))-(grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i]) < powerBESS){
+      
+      setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i])
+    }
+    
+    else{
+      
+      setPowerBESS[i] <- powerBESS
+    }
+  }
+
+
+  if(setPowerBESS[i] >= 0){
+
+    tableBESS[1,2] <- 1
+    tableBESS[1,3] <- 0
+
+    if(tableBESS[1,1] > minSOC){
+
+      outputPowerBESS[i] <- ((tableBESS[1,1]-minSOC)*energyBESS)*6
+
+      if(outputPowerBESS[i] > powerBESS){
+
+        outputPowerBESS[i] <- powerBESS
+      }
+
+      if(outputPowerBESS[i] > setPowerBESS[i]){
+
+        outputPowerBESS[i] <- setPowerBESS[i]
+      }
+
+      outputPowerBESS[i] <- outputPowerBESS[i]*dschEff
+    }
+
+    else{
+
+      outputPowerBESS[i] <- 0
+    }
+  }
+
+  else{
+
+    tableBESS[1,2] <- 0
+    tableBESS[1,3] <- 1
+
+    if(tableBESS[1,1] < maxSOC){
+
+      outputPowerBESS[i] <- ((tableBESS[1,1]-maxSOC)*energyBESS)*6
+
+      if(outputPowerBESS[i] < -powerBESS){
+
+        outputPowerBESS[i] <- -powerBESS
+      }
+
+      if(outputPowerBESS[i] < setPowerBESS[i]){
+
+        outputPowerBESS[i] <- setPowerBESS[i]
+      }
+    }
+
+    else{
+
+      outputPowerBESS[i] <- 0
+    }
+  }
+
+  SOC[i] <- tableBESS[1,1]
+
+  tableBESS[1,1] <- tableBESS[1,1]-((((tableBESS[1,2]/dschEff)+(tableBESS[1,3]*chEff))*(outputPowerBESS[i]/6))/energyBESS)
 
   #day count
   
@@ -233,9 +341,10 @@ for(i in 1:length(grid)){
   
   #finalization
   
+  
   if(i == length(grid)){
     
-    resultHVAC <- data.frame(timeFinal, tempRoom, outputPowerHVAC)
+    resultHVAC <- data.frame(timeFinal, tempRoom2, outputPowerHVAC2)
     colnames(resultHVAC) <- c("time", 1:groupHVAC, "output")
     
     resultBESS <- data.frame(timeFinal, SOC, outputPowerBESS)
@@ -243,7 +352,7 @@ for(i in 1:length(grid)){
   }
 }
 
-resultGrid <- data.frame(timeFinal, grid, grid+(numberHVAC*powerHVAC/1000)-outputPowerHVAC+outputPowerBESS)
+resultGrid <- data.frame(timeFinal, grid, grid+outputPowerHVAC1-outputPowerHVAC2+outputPowerBESS)
 colnames(resultGrid) <- c("time", "before", "after")
 
 #graphs
@@ -256,7 +365,8 @@ ggplot(resultGrid, aes(x=time, y=before)) +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(breaks=seq(-200, 200, 20))
+  scale_y_continuous(limits=c(-150, 190), breaks=seq(-200, 200, 20)) +
+  geom_hline(yintercept = 182)
 
 ggplot(resultGrid, aes(x=time, y=after)) +
   theme_bw() +
@@ -264,4 +374,5 @@ ggplot(resultGrid, aes(x=time, y=after)) +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(breaks=seq(-200, 200, 20))
+  scale_y_continuous(limits=c(-150, 190), breaks=seq(-200, 200, 20)) +
+  geom_hline(yintercept = 182)
