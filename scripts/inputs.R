@@ -1,35 +1,41 @@
+
 #----
 #transmission-side
 
-generation <- generationData$activePower
-load <- (loadData$activePower/4)*0.8
+generation <- (generationData$activePower*4)
+load <- (loadData$activePower)
 
-increaseGeneration <- 0.1
-increaseLoad <- 0.0
+increaseGeneration <- 1.25
+increaseLoad <- 1
 
-grid <- (generation*(1+increaseGeneration))-(load*(1+increaseLoad))
 
-lineCapacity <- 40
-lineSafetyMargin <- 0.01
+grid <- (generation*(increaseGeneration))-(load*(increaseLoad))
+
+lineCapacity <- 182
+lineSafetyMargin <- 0.02
+
+min(grid)
+max(grid)
 
 #----
 #HVAC
 
-numberHVAC <- 4000
-controlNumberHVAC <- 400
+numberHVAC <- 8000
+groupHVAC <- 20
 
-powerHVAC <- 2
+heatingPower <- 2.45
+coolingPower <- 2.65
 
-heatingCoP <- 4
-coolingCoP <- 3.5
+heatingCoP <- 3.21
+coolingCoP <- 2.64
 
 thermCap <- 9200
 thermRes <- 50
 
 tempOut <- tempSubhourly$temp4
 
-tempRoomWanted <- 22
-tempWindow <- 2
+tempRoomWanted <- 23
+tempWindow <- 4
 
 tempRoomMin <- tempRoomWanted-(tempWindow/2)
 tempRoomMax <- tempRoomWanted+(tempWindow/2)
@@ -37,15 +43,20 @@ tempRoomMax <- tempRoomWanted+(tempWindow/2)
 #----
 #BESS
 
-minSoC <- 0.4
-maxSoC <- 0.9
+minSOC <- 0.25
+maxSOC <- 0.95
 
-powerBESS <- 1
 
-energy2powerRatio <- 2
-  
-energyBESS <- powerBESS*energy2powerRatio
+powerBESS <- 0
+energyBESS <- 2.2
 
-dschEff <- 0.98
+dschEff <- 0.93
+chEff <- 0.93
 
-chEff <- 0.98
+
+
+powerBESS <- 2.2
+energyBESS <- 2.2
+
+dschEff <- 0.93
+chEff <- 0.93
