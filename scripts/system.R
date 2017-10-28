@@ -1,5 +1,10 @@
 #----
 
+library(ggplot2)
+library(reshape2)
+
+#----
+
 modeHVAC <- logical()
 
 tempOutSum <- 0
@@ -27,6 +32,7 @@ for(i in 43:52674){
 modeHVAC <- rep(modeHVAC, each=72)
 
 modeHVAC <- c(rep(1,42), modeHVAC, rep(1,30))
+
 
 #----
 
@@ -59,7 +65,7 @@ for(i in 1:length(grid)){
           tableHVAC1[1,4] <- 0
         }
         
-        else if(tableHVAC1[1,2] < tempRoomMin+((coolingCoP*powerHVAC)*(600/thermCap))){
+        else if(tableHVAC1[1,2] < tempRoomMin+((coolingCoP*coolingPower)*(600/thermCap))){
           
           tableHVAC1[1,3] <- 0
           tableHVAC1[1,4] <- 0     
@@ -83,7 +89,7 @@ for(i in 1:length(grid)){
       
       else{
         
-        if(tableHVAC1[1,2] > tempRoomMax-((heatingCoP*powerHVAC)*(600/thermCap))){
+        if(tableHVAC1[1,2] > tempRoomMax-((heatingCoP*heatingPower)*(600/thermCap))){
           
           tableHVAC1[1,3] <- 0
           tableHVAC1[1,4] <- 0
@@ -115,9 +121,9 @@ for(i in 1:length(grid)){
   
   tempRoom1[i,1] <- tableHVAC1[1,2]
   
-  tableHVAC1[1,2] <- tableHVAC1[1,2]+((((tempOut[i]-tableHVAC1[1,2])/thermRes)+((tableHVAC1[1,4]*heatingCoP-tableHVAC1[1,3]*coolingCoP)*powerHVAC))*(600/thermCap)) 
+  tableHVAC1[1,2] <- tableHVAC1[1,2]+((((tempOut[i]-tableHVAC1[1,2])/thermRes)+(tableHVAC1[1,4]*heatingCoP*heatingPower-tableHVAC1[1,3]*coolingCoP*coolingPower))*(600/thermCap)) 
   
-  outputPowerHVAC1[i] <- ((tableHVAC1[1,3]+tableHVAC1[1,4])*numberHVAC*powerHVAC)/1000
+  outputPowerHVAC1[i] <- ((tableHVAC1[1,3]*coolingPower+tableHVAC1[1,4]*heatingPower)*numberHVAC)/1000
   
   #day count
   
@@ -131,7 +137,7 @@ for(i in 1:length(grid)){
 #----
 
 for(i in 1:length(grid)){
-
+  
   #----
   #initialization
   
@@ -158,14 +164,14 @@ for(i in 1:length(grid)){
   #----
   #HVAC
   
-  if((grid[i]+outputPowerHVAC1[i]) > (lineCapacity*(1-lineSafetyMargin))){
+  if(grid[i]-outputPowerHVAC1[i] > (lineCapacity*(1-lineSafetyMargin))){
     
-    setPowerHVAC[i] <- (grid[i]+outputPowerHVAC1[i])-(lineCapacity*(1-lineSafetyMargin))
+    setPowerHVAC[i] <- (grid[i]-outputPowerHVAC1[i])-(lineCapacity*(1-lineSafetyMargin))
   }
   
   else{
     
-    setPowerHVAC[i] <- 0
+    setPowerHVAC[i] <- outputPowerHVAC1[i]
   }
   
   
@@ -191,7 +197,7 @@ for(i in 1:length(grid)){
         tableHVAC2[j,4] <- 0
       }
       
-      else if(tableHVAC2[j,2] < tempRoomMin+((coolingCoP*powerHVAC)*(600/thermCap))){
+      else if(tableHVAC2[j,2] < tempRoomMin+((coolingCoP*coolingPower)*(600/thermCap))){
         
         tableHVAC2[j,3] <- 0
         tableHVAC2[j,4] <- 0
@@ -221,7 +227,7 @@ for(i in 1:length(grid)){
         tableHVAC2[j,4] <- 1
       }
       
-      else if(tableHVAC2[j,2] > tempRoomMax-((heatingCoP*powerHVAC)*(600/thermCap))){
+      else if(tableHVAC2[j,2] > tempRoomMax-((heatingCoP*heatingPower)*(600/thermCap))){
         
         tableHVAC2[j,3] <- 0
         tableHVAC2[j,4] <- 0
@@ -243,95 +249,80 @@ for(i in 1:length(grid)){
       }
     }
     
-    tableHVAC2[j,2] <- tableHVAC2[j,2]+((((tempOut[i]-tableHVAC2[j,2])/thermRes)+((tableHVAC2[j,4]*heatingCoP-tableHVAC2[j,3]*coolingCoP)*powerHVAC))*(600/thermCap))
-   
-    setPowerHVAC[i] <- setPowerHVAC[i]-((tableHVAC2[j,3]+tableHVAC2[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
+    tableHVAC2[j,2] <- tableHVAC2[j,2]+((((tempOut[i]-tableHVAC2[j,2])/thermRes)+(tableHVAC2[j,4]*heatingCoP*heatingPower-tableHVAC2[j,3]*coolingCoP*coolingPower))*(600/thermCap))
     
-    outputPowerHVAC2[i] <- outputPowerHVAC2[i]+((tableHVAC2[j,3]+tableHVAC2[j,4])*((powerHVAC*(numberHVAC/groupHVAC))/1000))
+    setPowerHVAC[i] <- setPowerHVAC[i]-(((tableHVAC2[j,3]*coolingPower+tableHVAC2[j,4]*heatingPower)*(numberHVAC/groupHVAC))/1000)
+    
+    outputPowerHVAC2[i] <- outputPowerHVAC2[i]+(((tableHVAC2[j,3]*coolingPower+tableHVAC2[j,4]*heatingPower)*(numberHVAC/groupHVAC))/1000)
   }
   
   tableHVAC2 <- tableHVAC2[order(tableHVAC2[ ,1]), ]
   
+  
   #----
   #BESS
   
-  if((grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i]) > (lineCapacity*(1-lineSafetyMargin))){
-
-    setPowerBESS[i] <- -((grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i])-(lineCapacity*(1-lineSafetyMargin)))
-  }
-
-  else{
-    
-    if((lineCapacity*(1-lineSafetyMargin))-(grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i]) < powerBESS){
-      
-      setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i])
-    }
-    
-    else{
-      
-      setPowerBESS[i] <- powerBESS
-    }
-  }
-
-
+  setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i])
+  
+  
   if(setPowerBESS[i] >= 0){
-
+    
     tableBESS[1,2] <- 1
     tableBESS[1,3] <- 0
-
+    
     if(tableBESS[1,1] > minSOC){
-
+      
       outputPowerBESS[i] <- ((tableBESS[1,1]-minSOC)*energyBESS)*6
-
+      
       if(outputPowerBESS[i] > powerBESS){
-
+        
         outputPowerBESS[i] <- powerBESS
       }
-
+      
       if(outputPowerBESS[i] > setPowerBESS[i]){
-
+        
         outputPowerBESS[i] <- setPowerBESS[i]
       }
-
+      
       outputPowerBESS[i] <- outputPowerBESS[i]*dschEff
     }
-
+    
     else{
-
+      
       outputPowerBESS[i] <- 0
     }
   }
-
+  
   else{
-
+    
     tableBESS[1,2] <- 0
     tableBESS[1,3] <- 1
-
+    
     if(tableBESS[1,1] < maxSOC){
-
+      
       outputPowerBESS[i] <- ((tableBESS[1,1]-maxSOC)*energyBESS)*6
-
+      
       if(outputPowerBESS[i] < -powerBESS){
-
+        
         outputPowerBESS[i] <- -powerBESS
       }
-
+      
       if(outputPowerBESS[i] < setPowerBESS[i]){
-
+        
         outputPowerBESS[i] <- setPowerBESS[i]
       }
     }
-
+    
     else{
-
+      
       outputPowerBESS[i] <- 0
     }
   }
-
+  
   SOC[i] <- tableBESS[1,1]
-
+  
   tableBESS[1,1] <- tableBESS[1,1]-((((tableBESS[1,2]/dschEff)+(tableBESS[1,3]*chEff))*(outputPowerBESS[i]/6))/energyBESS)
-
+  
   #day count
   
   if(i%%144 == 0){
@@ -352,27 +343,103 @@ for(i in 1:length(grid)){
   }
 }
 
-resultGrid <- data.frame(timeFinal, grid, grid+outputPowerHVAC1-outputPowerHVAC2+outputPowerBESS)
+resultGeneration <- data.frame(timeFinal, generation, generation+outputPowerBESS)
+colnames(resultGeneration) <- c("time", "before", "after")
+
+resultLoad <- data.frame(timeFinal, load, load-outputPowerHVAC1+outputPowerHVAC2)
+colnames(resultLoad) <- c("time", "before", "after")
+
+resultGrid <- data.frame(timeFinal, grid, resultGeneration$after-resultLoad$after)
 colnames(resultGrid) <- c("time", "before", "after")
+
+meltedResultHVAC <- melt(subset(resultHVAC, select=c(-output)), id.var="time")
+
 
 #graphs
 
-library(ggplot2)
+ggplot(resultGeneration, aes(x=time, y=before)) +
+  theme_bw() +
+  geom_line(size=0.1, color="#56B1F7") +
+  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
+ggplot(resultGeneration, aes(x=time, y=after)) +
+  theme_bw() +
+  geom_line(size=0.1, color="#56B1F7") +
+  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
+ggplot(resultLoad, aes(x=time, y=before)) +
+  theme_bw() +
+  geom_line(size=0.1, color="#56B1F7") +
+  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
+ggplot(resultLoad, aes(x=time, y=after)) +
+  theme_bw() +
+  geom_line(size=0.1, color="#56B1F7") +
+  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
 
 ggplot(resultGrid, aes(x=time, y=before)) +
   theme_bw() +
-  geom_line(size=1, color="#56B1F7") +
+  geom_line(size=0.1, color="#56B1F7") +
+  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  geom_hline(yintercept=-lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
+ggplot(resultGrid, aes(x=time, y=after)) +
+  theme_bw() +
+  geom_line(size=0.1, color="#56B1F7") +
+  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  geom_hline(yintercept=-lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+
+ggplot(resultHVAC, aes(x=time, y=output)) +
+  theme_bw() +
+  geom_line(size=0.1, color="#56B1F7") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(limits=c(-150, 190), breaks=seq(-200, 200, 20)) +
-  geom_hline(yintercept = 182)
+  scale_y_continuous(limits=c(0,20), breaks=seq(0,20,2))
 
-ggplot(resultGrid, aes(x=time, y=after)) +
+
+meltedResultHVAC <- melt(subset(resultHVAC, select=c(-output)), id.var="time")
+
+ggplot(meltedResultHVAC, aes(x=time, y=value)) +
+  theme_bw() +
+  geom_line(size = 0.1, aes(color=variable)) +
+  theme(legend.position="none") +
+  labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
+  theme(text=element_text(size = 20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(breaks=seq(21, 23, 0.5))
+
+
+ggplot(resultBESS, aes(x=time, y=output)) +
   theme_bw() +
   geom_line(size=1, color="#56B1F7") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(limits=c(-150, 190), breaks=seq(-200, 200, 20)) +
-  geom_hline(yintercept = 182)
+  scale_y_continuous(limits=c(-2.2,2.2), breaks=seq(-2.2,2.2,0.2))
+
+ggplot(resultBESS, aes(x=time, y=SOC)) +
+  theme_bw() +
+  geom_line(size=1, color="#56B1F7") +
+  labs(x="time (month)", y="power (MW)") +
+  theme(text=element_text(size=20)) +
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(limits=c(0.25,1), breaks=seq(0,1,0.1))
