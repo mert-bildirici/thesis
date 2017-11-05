@@ -133,7 +133,6 @@ for(i in 1:length(grid)){
   }
 }
 
-
 #----
 
 for(i in 1:length(grid)){
@@ -148,6 +147,8 @@ for(i in 1:length(grid)){
     tempRoom2 <- as.data.frame(matrix(nrow=length(grid), ncol=groupHVAC))
     
     setPowerHVAC <- numeric(length(grid))
+    
+    setPowerHVAC_remain <- numeric(length(grid))
     
     outputPowerHVAC2 <- numeric(length(grid))
     
@@ -164,14 +165,30 @@ for(i in 1:length(grid)){
   #----
   #HVAC
   
-  if(grid[i]-outputPowerHVAC1[i] > (lineCapacity*(1-lineSafetyMargin))){
+  if(modeHVAC[i] == 0){
     
-    setPowerHVAC[i] <- (grid[i]-outputPowerHVAC1[i])-(lineCapacity*(1-lineSafetyMargin))
+    if((grid[i]+outputPowerHVAC1[i]-((numberHVAC*coolingPower)/(groupHVAC*1000))) > (lineCapacity*(1-lineSafetyMargin))){
+      
+      setPowerHVAC[i] <- (grid[i]+outputPowerHVAC1[i])-(lineCapacity*(1-lineSafetyMargin))
+    }
+    
+    else{
+      
+      setPowerHVAC[i] <- ((numberHVAC*coolingPower)/(groupHVAC*1000))
+    }
   }
   
-  else{
+  else if(modeHVAC[i] == 1){
     
-    setPowerHVAC[i] <- outputPowerHVAC1[i]
+    if((grid[i]+outputPowerHVAC1[i]-((numberHVAC*heatingPower)/(groupHVAC*1000))) > (lineCapacity*(1-lineSafetyMargin))){
+      
+      setPowerHVAC[i] <- (grid[i]+outputPowerHVAC1[i])-(lineCapacity*(1-lineSafetyMargin))
+    }
+    
+    else{
+      
+      setPowerHVAC[i] <- ((numberHVAC*heatingPower)/(groupHVAC*1000))
+    }
   }
   
   
@@ -187,6 +204,9 @@ for(i in 1:length(grid)){
     tableHVAC2 <- tableHVAC2[order(tableHVAC2[ ,2]), ]
   }
   
+  
+  setPowerHVAC_remain[i] <- setPowerHVAC[i]
+  
   for(j in 1:groupHVAC){
     
     if(modeHVAC[i] == 0){
@@ -197,7 +217,7 @@ for(i in 1:length(grid)){
         tableHVAC2[j,4] <- 0
       }
       
-      else if(tableHVAC2[j,2] < tempRoomMin+((coolingCoP*coolingPower)*(600/thermCap))){
+      else if(tableHVAC2[j,2] < tempRoomMin+((coolingCoP*coolingPower)*(600/thermCap))-0.1){
         
         tableHVAC2[j,3] <- 0
         tableHVAC2[j,4] <- 0
@@ -205,7 +225,7 @@ for(i in 1:length(grid)){
       
       else{
         
-        if(setPowerHVAC[i] > 0){
+        if(setPowerHVAC_remain[i] > 0){
           
           tableHVAC2[j,3] <- 1
           tableHVAC2[j,4] <- 0
@@ -227,7 +247,7 @@ for(i in 1:length(grid)){
         tableHVAC2[j,4] <- 1
       }
       
-      else if(tableHVAC2[j,2] > tempRoomMax-((heatingCoP*heatingPower)*(600/thermCap))){
+      else if(tableHVAC2[j,2] > tempRoomMax-((heatingCoP*heatingPower)*(600/thermCap))+0.1){
         
         tableHVAC2[j,3] <- 0
         tableHVAC2[j,4] <- 0
@@ -235,7 +255,7 @@ for(i in 1:length(grid)){
       
       else{
         
-        if(setPowerHVAC[i] > 0){
+        if(setPowerHVAC_remain[i] > 0){
           
           tableHVAC2[j,3] <- 0
           tableHVAC2[j,4] <- 1
@@ -251,10 +271,10 @@ for(i in 1:length(grid)){
     
     tableHVAC2[j,2] <- tableHVAC2[j,2]+((((tempOut[i]-tableHVAC2[j,2])/thermRes)+(tableHVAC2[j,4]*heatingCoP*heatingPower-tableHVAC2[j,3]*coolingCoP*coolingPower))*(600/thermCap))
     
-    setPowerHVAC[i] <- setPowerHVAC[i]-(((tableHVAC2[j,3]*coolingPower+tableHVAC2[j,4]*heatingPower)*(numberHVAC/groupHVAC))/1000)
-    
-    outputPowerHVAC2[i] <- outputPowerHVAC2[i]+(((tableHVAC2[j,3]*coolingPower+tableHVAC2[j,4]*heatingPower)*(numberHVAC/groupHVAC))/1000)
+    setPowerHVAC_remain[i] <- setPowerHVAC_remain[i]-(((tableHVAC2[j,3]*coolingPower+tableHVAC2[j,4]*heatingPower)*(numberHVAC/groupHVAC))/1000)
   }
+  
+  outputPowerHVAC2[i] <- setPowerHVAC[i]-setPowerHVAC_remain[i]
   
   tableHVAC2 <- tableHVAC2[order(tableHVAC2[ ,1]), ]
   
@@ -262,7 +282,7 @@ for(i in 1:length(grid)){
   #----
   #BESS
   
-  setPowerBESS[i] <- (lineCapacity*(1-lineSafetyMargin))-(grid[i]+outputPowerHVAC1[i]-outputPowerHVAC2[i])
+  setPowerBESS[i] <- 0
   
   
   if(setPowerBESS[i] >= 0){
@@ -416,8 +436,6 @@ ggplot(resultHVAC, aes(x=time, y=output)) +
   scale_y_continuous(limits=c(0,20), breaks=seq(0,20,2))
 
 
-meltedResultHVAC <- melt(subset(resultHVAC, select=c(-output)), id.var="time")
-
 ggplot(meltedResultHVAC, aes(x=time, y=value)) +
   theme_bw() +
   geom_line(size = 0.1, aes(color=variable)) +
@@ -425,7 +443,7 @@ ggplot(meltedResultHVAC, aes(x=time, y=value)) +
   labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
   theme(text=element_text(size = 20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(breaks=seq(21, 23, 0.5))
+  scale_y_continuous(breaks=seq(tempRoomWanted-(tempWindow/2), tempRoomWanted+(tempWindow/2), 0.5))
 
 
 ggplot(resultBESS, aes(x=time, y=output)) +
