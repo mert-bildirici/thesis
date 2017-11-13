@@ -15,97 +15,87 @@ for(i in 1:length(grid)){
     #----
     #HVAC
     
-    tableHVAC <- data.frame(group=1:groupHVAC, tempRoom=tempRoomWanted, modeCooling=logical(groupHVAC), modeHeating=logical(groupHVAC))
+    tableHVAC <- data.frame(group=1:groupHVAC, tempRoom=tempRoomWanted, modeHVAC=logical(groupHVAC), heatingON=logical(groupHVAC), coolingON=logical(groupHVAC), counter=integer(groupHVAC))
     
-    tempRoom <- as.data.frame(matrix(nrow=length(grid), ncol=groupHVAC))
-    
-    outputPowerHVAC_before <- numeric(length(grid))
+    resultHVAC_before <- data.frame(power=numeric(length(grid)), temperature=matrix(nrow=length(grid), ncol=groupHVAC))
   }
-  
   
   #HVAC control----
   
-  tempRoom[i, ] <- as.numeric(tableHVAC[ ,2])
+  tableHVAC <- tableHVAC[order(tableHVAC[ ,3], tableHVAC[ ,2]), ]
   
-  #cooling mode----
-  
-  if(modeHVAC[i] == 0){
-
-    tableHVAC[ ,4] <- 0
+  for(j in 1:groupHVAC){
     
-    tableHVAC <- tableHVAC[order(-tableHVAC[ ,2]), ]
-    
-    for(j in 1:groupHVAC){
+    if(tableHVAC[j,3] == 0){
       
-      if(tableHVAC[j,2] >= tempRoomMax){
-        
-        tableHVAC[j,3] <- 1
-      }
-      
-      else  if((tableHVAC[j,2] < tempRoomMax) && (tableHVAC[j,2] > tempRoomMin)){
-        
-        tableHVAC[j,3] <- tableHVAC[j,3]
-      }
-      
-      else{
-        
-        tableHVAC[j,3] <- 0
-      }
-    }
-  }
-  
-  #heating mode----
-  
-  else if(modeHVAC[i] == 1){
-    
-    tableHVAC[ ,3] <- 0
-    
-    tableHVAC <- tableHVAC[order(tableHVAC[ ,2]), ]
-    
-    for(j in 1:groupHVAC){
+      tableHVAC[j,5] <- 0
       
       if(tableHVAC[j,2] <= tempRoomMin){
         
         tableHVAC[j,4] <- 1
       }
       
-      else  if((tableHVAC[j,2] > tempRoomMin) && (tableHVAC[j,2] < tempRoomMax)){
-        
-        tableHVAC[j,4] <- tableHVAC[j,4]
-      }
-      
-      else{
+      else if(tableHVAC[j,2] >= tempRoomMax-(heatingPower*heatingCoP*(600/thermCap))){
         
         tableHVAC[j,4] <- 0
+      }
+      
+      
+      if(tableHVAC[j,2] >= tempRoomMax){
+        
+        tableHVAC[j,3] <- 1
+      }
+    }
+    
+    
+    else if(tableHVAC[j,3] == 1){
+      
+      tableHVAC[j,4] <- 0
+      
+      if(tableHVAC[j,2] >= tempRoomMax){
+        
+        tableHVAC[j,5] <- 1
+      }
+      
+      else if(tableHVAC[j,2] <= tempRoomMin+(coolingPower*coolingCoP*(600/thermCap))){
+        
+        tableHVAC[j,5] <- 0
+      }
+      
+      
+      if(tableHVAC[j,2] <= tempRoomMin){
+        
+        tableHVAC[j,3] <- 0
       }
     }
   }
   
   #----
-  #step calculations for HVAC
+  #step operations for HVAC
   
   tableHVAC <- tableHVAC[order(tableHVAC[ ,1]), ]
   
-  outputPowerHVAC_before[i] <- (sum(tableHVAC[ ,3])*(coolingPower/1000)+sum(tableHVAC[ ,4])*(heatingPower/1000))*(numberHVAC/groupHVAC)
+  resultHVAC_before[i,1] <- (sum(tableHVAC[ ,4])*(heatingPower/1000)+sum(tableHVAC[ ,5])*(coolingPower/1000))*(numberHVAC/groupHVAC)
+  
+  resultHVAC_before[i,2:ncol(resultHVAC_before)] <- tableHVAC[ ,2]
   
   for(j in 1:groupHVAC){
     
-    tableHVAC[j,2] <- tableHVAC[j,2]+((((tempOut[i]-tableHVAC[j,2])/thermRes)+(tableHVAC[j,4]*heatingCoP*heatingPower-tableHVAC[j,3]*coolingCoP*coolingPower))*(600/thermCap)) 
-  }
-
-  #day count
-  
-  if(i%%144 == 0){
-    
-    print(i/144)
+    tableHVAC[j,2] <- tableHVAC[j,2]+((((tempOut[i]-tableHVAC[j,2])/thermRes)+(tableHVAC[j,4]*heatingCoP*heatingPower-tableHVAC[j,5]*coolingCoP*coolingPower))*(600/thermCap)) 
   }
   
   #finalization
   
   if(i == length(grid)){
     
-    resultHVAC_before <- data.frame(timeFinal, tempRoom, outputPowerHVAC_before)
-    colnames(resultHVAC_before) <- c("time", 1:groupHVAC, "power")
+    resultHVAC_before <- cbind(time=timeFinal, resultHVAC_before)
+  }
+  
+  #day count
+  
+  if(i%%144 == 0){
+    
+    print(i/144)
   }
 }
 
@@ -119,7 +109,7 @@ resultGrid_before <- data.frame(timeFinal, resultGeneration_before$power-resultL
 colnames(resultGrid_before) <- c("time", "power")
 
 meltedResultHVAC_before <- melt(subset(resultHVAC_before, select=c(-power)), id.var="time")
-colnames(meltedResultHVAC_before) <- c("time", "group", "tempRoom")
+colnames(meltedResultHVAC_before) <- c("time", "group", "temperature")
 
 
 #graphs
@@ -131,20 +121,22 @@ ggplot(resultGrid_before, aes(x=time, y=power)) +
   geom_hline(yintercept=-lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(limits=c(-190, 190), breaks=seq(-200, 200, 40))
 
 ggplot(resultHVAC_before, aes(x=time, y=power)) +
   theme_bw() +
   geom_line(size=0.1, color="#56B1F7") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
-  scale_x_datetime(date_labels="%m", date_breaks="1 month")
+  scale_x_datetime(date_labels="%m", date_breaks="1 month") +
+  scale_y_continuous(limits=c(0, 20), breaks=seq(0, 20, 5))
 
-ggplot(meltedResultHVAC_before, aes(x=time, y=tempRoom)) +
+ggplot(meltedResultHVAC_before, aes(x=time, y=temperature)) +
   theme_bw() +
   geom_line(size = 0.1, aes(color=group)) +
   theme(legend.position="none") +
   labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
   theme(text=element_text(size = 20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(breaks=seq(tempRoomWanted-(tempWindow/2), tempRoomWanted+(tempWindow/2), 0.5))
+  scale_y_continuous(limits=c(tempRoomMin, tempRoomMax), breaks=seq(tempRoomMin, tempRoomMax, (tempRoomMax-tempRoomMin)/2))
