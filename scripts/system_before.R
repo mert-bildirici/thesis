@@ -35,13 +35,13 @@ for(i in 1:length(grid)){
         tableHVAC[j,4] <- 1
       }
       
-      else if(tableHVAC[j,2] >= tempRoomMax-(heatingPower*heatingCoP*(600/thermCap))){
+      else if(tableHVAC[j,2] >= tempRoomMax-0.2){
         
         tableHVAC[j,4] <- 0
       }
       
       
-      if(tableHVAC[j,2] >= tempRoomMax){
+      if(tableHVAC[j,2] >= tempRoomMax+0.2){
         
         tableHVAC[j,3] <- 1
       }
@@ -57,13 +57,13 @@ for(i in 1:length(grid)){
         tableHVAC[j,5] <- 1
       }
       
-      else if(tableHVAC[j,2] <= tempRoomMin+(coolingPower*coolingCoP*(600/thermCap))){
+      else if(tableHVAC[j,2] <= tempRoomMin+0.2){
         
         tableHVAC[j,5] <- 0
       }
       
       
-      if(tableHVAC[j,2] <= tempRoomMin){
+      if(tableHVAC[j,2] <= tempRoomMin-0.2){
         
         tableHVAC[j,3] <- 0
       }
@@ -139,4 +139,4 @@ ggplot(meltedResultHVAC_before, aes(x=time, y=temperature)) +
   labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
   theme(text=element_text(size = 20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(limits=c(tempRoomMin, tempRoomMax), breaks=seq(tempRoomMin, tempRoomMax, (tempRoomMax-tempRoomMin)/2))
+  scale_y_continuous(limits=c(20, 26), breaks=seq(20, 26, 1))
