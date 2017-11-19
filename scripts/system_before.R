@@ -12,8 +12,7 @@ for(i in 1:length(grid)){
   
   if(i == 1){
     
-    #----
-    #HVAC
+    #HVAC----
     
     tableHVAC <- data.frame(group=1:groupHVAC, tempRoom=tempRoomWanted, modeHVAC=logical(groupHVAC), heatingON=logical(groupHVAC), coolingON=logical(groupHVAC), counter=integer(groupHVAC))
     
@@ -139,4 +138,4 @@ ggplot(meltedResultHVAC_before, aes(x=time, y=temperature)) +
   labs(x="time (month)", y=expression(room~temperature~(''^o~C))) +
   theme(text=element_text(size = 20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(limits=c(20, 26), breaks=seq(20, 26, 1))
+  scale_y_continuous(limits=c(20.5, 25.5), breaks=seq(21, 25, 1))
