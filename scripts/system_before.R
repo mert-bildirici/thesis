@@ -116,7 +116,7 @@ colnames(meltedResultHVAC_before) <- c("time", "group", "temperature")
 ggplot(resultGrid_before, aes(x=time, y=power)) +
   theme_bw() +
   geom_line(size=0.1, color="#56B1F7") +
-  geom_hline(yintercept=lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
+  geom_hline(yintercept= lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
   geom_hline(yintercept=-lineCapacity*(1-lineSafetyMargin), size=0.1, color="red") +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
@@ -129,7 +129,7 @@ ggplot(resultHVAC_before, aes(x=time, y=power)) +
   labs(x="time (month)", y="power (MW)") +
   theme(text=element_text(size=20)) +
   scale_x_datetime(date_labels="%m", date_breaks="1 month") +
-  scale_y_continuous(limits=c(0, 20), breaks=seq(0, 20, 5))
+  scale_y_continuous(limits=c(0, 25), breaks=seq(0, 25, 5))
 
 ggplot(meltedResultHVAC_before, aes(x=time, y=temperature)) +
   theme_bw() +
